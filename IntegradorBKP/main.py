@@ -35,9 +35,22 @@ def main():
     # Ler informações do Google Sheets
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE',
-                                range='TestesIntegrador!A1:B2').execute()
+                                range='BKPNuvem!B2:B2').execute()
     values = result.get('values', [])
     print(values)
+    
+    # Começo de teste de leitura de backup
+    
+    range_name = 'BKPNuvem!B:B'
+    result = service.spreadsheets().values().get(
+    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', range=range_name).execute()
+    values = result.get('values', [])
+
+    vetor = [value[0] for value in values if value]
+    
+    print(vetor)
+       
+    
 """
     # adicionar/editar valores no Google Sheets
     valores_adicionar = [
