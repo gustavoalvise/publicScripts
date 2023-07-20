@@ -9,5 +9,5 @@ Other functions include
 - Windows Run functions to shortcut common daily operations
 
 ## IntegradorBKP
-Python script to integrate the Google Sheets API with ka file system in order to monitor backup files and generate reports as needed
+Python script to integrate the Google Sheets API with ka file system in order to monitor backup files and generate reports as needed  
 Currently in development
