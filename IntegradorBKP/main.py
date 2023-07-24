@@ -10,20 +10,26 @@ from google.oauth2.credentials import Credentials
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-# Obter informações de data e hora da modificação do arquivo
+# Obter informações de data e hora da modificação do arquivo ou pasta
 def obter_data_mod_arquivo(caminho_arquivo):
-    data_mod_timestamp = os.path.getmtime(caminho_arquivo)
-    data_mod = datetime.datetime.fromtimestamp(data_mod_timestamp)
-    return data_mod
+    if os.path.exists(caminho_arquivo):
+        data_mod_timestamp = os.path.getmtime(caminho_arquivo)
+        data_mod = datetime.datetime.fromtimestamp(data_mod_timestamp)
+        return data_mod
+    else: 
+        return None
 
 # Obter o arquivo mais recente dentro de uma pasta
 
-def obter_arquivo_mais_recente(caminho_pasta):
-    arquivos = os.listdir(caminho_pasta)
-    arquivos = [arquivo for arquivo in arquivos if os.path.isfile(os.path.join(caminho_pasta, arquivo))]
-    data_mod_arquivos = [(arquivo, os.path.getmtime(os.path.join(caminho_pasta, arquivo))) for arquivo in arquivos]
-    arquivo_mais_recente = max(data_mod_arquivos, key=lambda x: x[1])[0]
-    return arquivo_mais_recente
+def obter_arquivo_mais_recente(caminho_arquivo):
+    if os.path.exists(caminho_arquivo):
+        arquivos = os.listdir(caminho_arquivo)
+        arquivos = [arquivo for arquivo in arquivos if os.path.isfile(os.path.join(caminho_arquivo, arquivo))]
+        data_mod_arquivos = [(arquivo, os.path.getmtime(os.path.join(caminho_arquivo, arquivo))) for arquivo in arquivos]
+        arquivo_mais_recente = max(data_mod_arquivos, key=lambda x: x[1])[0]
+        return arquivo_mais_recente
+    else: 
+        return None
 
 def main():
     creds = None
@@ -45,52 +51,111 @@ def main():
 
     service = build('sheets', 'v4', credentials=creds)
     
-    # Fim da parte de autenticação do acesso
-
-    # Ler informações do Google Sheets
-    sheet = service.spreadsheets()
-    result = sheet.values().get(spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE',
-                                range='BKPNuvem!B2:B2').execute()
-    values = result.get('values', [])
-    print(values)
+    # Leitura de nomes de clientes
     
-    # Começo de teste de leitura de backup
-    
-    range_name = 'BKPNuvem!B:B'
+    planilha_nome = 'TestesIntegrador!B:B'
     result = service.spreadsheets().values().get(
-    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', range=range_name).execute()
-    valuesraw = result.get('values', [])
+    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', range=planilha_nome).execute()
+    vetor_clientes_raw = result.get('values', [])
+    vetor_clientes = [value[0] for value in vetor_clientes_raw if value] # Limpeza dos valores
+    # print(vetor_clientes)
 
-    vetor_clientes = [value[0] for value in valuesraw if value]
-    
-    print(vetor_clientes)
+    # Leitura dos nomes dos backups
 
-    # Começo de teste de leitura de arquivos
+    planilha_bkp = 'TestesIntegrador!J:J'
+    result = service.spreadsheets().values().get(
+    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', range=planilha_bkp).execute()
+    vetor_bkp_raw = result.get('values', [])
+    vetor_bkp = [value[0] for value in vetor_bkp_raw if value] # Limpeza dos valores
+    # print(vetor_bkp)
 
-    # Pegando o arquivo mais recente
+    # Leitura das data/hora dos backups
 
-    caminho_pasta = f'//192.168.1.211/ftp/{vetor_clientes[1]}/Bkp$implesDelphi'
-    arquivo_recente = obter_arquivo_mais_recente(caminho_pasta)
+    planilha_dh = 'TestesIntegrador!K:K'
+    result = service.spreadsheets().values().get(
+    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', range=planilha_dh).execute()
+    vetor_dh = result.get('values', [])
+    # print(vetor_dh)
 
-    print(f"O arquivo mais recente na pasta é: {arquivo_recente}")
+    # Criando o loop de atualização da planilha
 
-    # Pegando a data de modificação do arquivo mais recente
-    
-    caminho_arquivo = caminho_pasta
-    data_mod = obter_data_mod_arquivo(caminho_arquivo)
-    print(f"A data de modificação do arquivo é: {data_mod}")
+    for index, cliente in enumerate(vetor_clientes):
+        caminho_pasta = f'//192.168.1.211/ftp/{cliente}/'       
+        try:
+            data_backup_delphi = obter_data_mod_arquivo(caminho_pasta + 'Bkp$implesDelphi')
+            data_backup_web = obter_data_mod_arquivo(caminho_pasta + 'Bkp$implesWeb')
+            data_backup_nfe = obter_data_mod_arquivo(caminho_pasta + 'BkpXML-Nfe')
+        except:
+            data_backup_delphi = None
+            data_backup_web = None
+            data_backup_nfe = None
+        
+        if obter_arquivo_mais_recente(caminho_pasta + 'Bkp$implesDelphi') != None:
+            arquivo_busca_delphi = obter_arquivo_mais_recente(caminho_pasta + 'Bkp$implesDelphi') # Obtem o nome do arquivo
+            # print(f'{arquivo_busca_delphi}')
+            if vetor_bkp[index].split()[0] == arquivo_busca_delphi.split()[0]: # Pega a primeira parte do vetor
+                values={'values':[[arquivo_busca_delphi]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!J{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
+                data_backup_delphi = data_backup_delphi.strftime('%d/%m/%Y %H:%M:%S') #Transofrma a string em data/hora
+                values={'values':[[data_backup_delphi]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!K{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
 
+        if obter_arquivo_mais_recente(caminho_pasta + 'Bkp$implesWeb') != None:
+            arquivo_busca_web = obter_arquivo_mais_recente(caminho_pasta + 'Bkp$implesWeb')
+            if vetor_bkp[index].split()[0] == arquivo_busca_web.split()[0]:
+                values={'values':[[arquivo_busca_web]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!J{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
+                data_backup_web = data_backup_web.strftime('%d/%m/%Y %H:%M:%S')
+                values={'values':[[data_backup_web]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!K{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
 
-"""
-    # adicionar/editar valores no Google Sheets
-    valores_adicionar = [
-        ["Dezembro", "R$ 70.000,00"],
-        ["Janeiro/22", "R$80.000,00"],
-        ["Fevereiro/22", "R$127.352,00"],
-    ]
-    result = sheet.values().update(spreadsheetId='id_sua_planilha',
-                                range='Página1!A13', valueInputOption="RAW",
-                                   body={"values": valores_adicionar}).execute()
-"""
+        if obter_arquivo_mais_recente(caminho_pasta + 'BkpXML-Nfe') != None:
+            arquivo_busca_nfe = obter_arquivo_mais_recente(caminho_pasta + 'BkpXML-Nfe')
+            if vetor_bkp[index].split()[0] == arquivo_busca_nfe.split()[0]:
+                values={'values':[[arquivo_busca_nfe]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!J{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
+                data_backup_nfe = data_backup_nfe.strftime('%d/%m/%Y %H:%M:%S')
+                values={'values':[[data_backup_nfe]]}
+                request = service.spreadsheets().values().update(
+                    spreadsheetId='1o5XkucKJXtlM4eaG3IFWLBJCpj2Keoj4OKWGDgHRdFE', 
+                    range=f'TestesIntegrador!K{index+1}',
+                    valueInputOption='RAW',
+                    body=values
+                ).execute()
+
+        
+        # print(f'''
+        #        Cliente: {cliente}
+        #        Data Backup Delphi: {data_backup_delphi}
+        #        Data Backup Web: {data_backup_web}
+        #        Data Backup XML: {data_backup_nfe}
+        #        ''')
+        
+
 if __name__ == '__main__':
     main()
