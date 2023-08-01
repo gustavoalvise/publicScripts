@@ -67,7 +67,7 @@ else{
 }
 return
 
-^Numpad5:: ;abre a tela "run" do windows para utilizar os outros comandos
+^Numpad0:: ;abre a tela "run" do windows para utilizar os outros comandos
 Send, #r
 return
 
@@ -79,26 +79,26 @@ return
 Send, ^c ^v {F2}
 return
 
-^5:: ;faz login no sistema com as credenciais internas de administrador
+^Numpad3:: ;faz login no sistema com as credenciais internas de administrador
 Send, nome_usuário{tab}
 senha := gera_senha()
 Send, %senha%{enter}
 return
 
-^p::
-Send, Chrome http://localhost:8080/phpmyadmin/
+^Numpad4:: ;abre o phpmyadmin
+Run, Chrome http://localhost:8080/phpmyadmin/
 return
 
-^o::
-Send, Chrome http://localhost:8080/doc_supremo/
+^Numpad5:: ;abre o atualizador de versão do erp
+Run, Chrome http://localhost:8080/doc_supremo/
 return
 
 ^Numpad6:: ;abre o reindexador de tabelas paradox
-Send, C:\...\pdxrbld.exe
+Run, C:\...\pdxrbld.exe
 return
 
 ^+Numpad6:: ;roda o reindexador de tabelas paradox diretamente do run com a configuração mais comum
-Send, Pdxrbld /A $imples -R1 -P+ -Q+
+Run, Pdxrbld /A $imples -R1 -P+ -Q+
 return
 
 ^Numpad7:: ;abre as pastas com os xml das NFe/NFCe/CTe/MDFe do cliente
